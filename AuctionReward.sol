@@ -9,8 +9,8 @@ interface IERC20 {
 
 // TODO: Implement Basic auctioning flow
 // TODO: Implement LayerZero for cross chain messaging
+// TODO: Implement Fees for Auctions
 // TODO: Implement Rewards for Attestors
-// TODO: getAuctionInfo view function for UI
 
 /// @title AuctionReward
 /// @author Tranquil-Flow
@@ -26,6 +26,7 @@ contract AuctionReward {
         uint endPrice;
         uint startAt;
         uint expiresAt;
+        uint acceptingChainID;
     }
 
     uint public auctionCounter;
@@ -44,7 +45,8 @@ contract AuctionReward {
         uint _startingPrice,
         uint _endPrice,
         uint _duration,
-        uint _amountForSale
+        uint _amountForSale,
+        uint _acceptingChainID
     ) external {
         if (_startingPrice <= _endPrice) {
             revert InvalidPriceRange();
@@ -63,7 +65,8 @@ contract AuctionReward {
             startingPrice: _startingPrice,
             endPrice: _endPrice,
             startAt: block.timestamp,
-            expiresAt: block.timestamp + _duration
+            expiresAt: block.timestamp + _duration,
+            acceptingChainID: _acceptingChainID
         });
 
         IERC20(_tokenForSale).transferFrom(msg.sender, address(this), _amountForSale);
@@ -73,22 +76,18 @@ contract AuctionReward {
 
     /// @notice Accepts an auction
     function acceptAuction(uint _auctionId, uint _amount) external {
-
     }
 
     /// @notice Closes an auction once a valid offer has been made and AVS attestors have validated the transaction
     function closeAuction() external {
-        
     }
 
     /// @notice Claims rewards for AVS attestors
     function claimRewards() external {
-
     }
 
     /// @notice Withdraws tokens from an expired auction
     function withdrawExpiredAuction() external {
-
     }
 
     /// @notice Gets the current price of the auction
@@ -103,6 +102,13 @@ contract AuctionReward {
         uint currentPrice = auction.startingPrice - discount;
 
         return currentPrice < auction.endPrice ? auction.endPrice : currentPrice;
+    }
+
+    /// @notice Gets the auction information
+    /// @param _auctionId The ID of the auction
+    /// @return The auction information
+    function getAuctionInfo(uint _auctionId) public view returns (Auction memory) {
+        return auctions[_auctionId];
     }
 
 }
