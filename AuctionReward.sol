@@ -10,32 +10,69 @@ interface IERC20 {
 // TODO: Implement Basic auctioning flow
 // TODO: Implement LayerZero for cross chain messaging
 // TODO: Implement Rewards for Attestors
+// TODO: getAuctionInfo view function for UI
 
 /// @title AuctionReward
 /// @author Tranquil-Flow
 /// @notice A contract for P2P transferring of tokens across multiple chains using Dutch Auctions
 contract AuctionReward {
-    uint256 private constant DURATION = 7 days;
-    IERC20 public immutable tokenForSale;
-    IERC20 public immutable tokenForPayment;
-    uint256 public immutable amountForSale;
-    address payable public immutable seller;
-    uint256 public immutable startingPrice;
-    uint256 public immutable startAt;
-    uint256 public immutable expiresAt;
-    uint256 public immutable discountRate;
+    struct Auction {
+        bool auctionOpen;
+        address seller;
+        IERC20 tokenForSale;
+        IERC20 tokenForPayment;
+        uint amountForSale;
+        uint startingPrice;
+        uint endPrice;
+        uint startAt;
+        uint expiresAt;
+    }
+
+    uint public auctionCounter;
+    mapping(uint => Auction) public auctions;
+
+    error InvalidPriceRange();
+    error InsufficientTokensForSale();
 
     constructor() {
-
     }
 
     /// @notice Sets up a Dutch auction
-    function createAuction() external {
+    function createAuction(
+        address _tokenForSale,
+        address _tokenForPayment,
+        uint _startingPrice,
+        uint _endPrice,
+        uint _duration,
+        uint _amountForSale
+    ) external {
+        if (_startingPrice <= _endPrice) {
+            revert InvalidPriceRange();
+        }
 
+        if (IERC20(_tokenForSale).balanceOf(msg.sender) < _amountForSale) {
+            revert InsufficientTokensForSale();
+        }
+
+        auctions[auctionCounter] = Auction({
+            auctionOpen: true,
+            seller: msg.sender,
+            tokenForSale: IERC20(_tokenForSale),
+            tokenForPayment: IERC20(_tokenForPayment),
+            amountForSale: _amountForSale,
+            startingPrice: _startingPrice,
+            endPrice: _endPrice,
+            startAt: block.timestamp,
+            expiresAt: block.timestamp + _duration
+        });
+
+        IERC20(_tokenForSale).transferFrom(msg.sender, address(this), _amountForSale);
+
+        auctionCounter++;
     }
 
     /// @notice Accepts an auction
-    function acceptAuction() external {
+    function acceptAuction(uint _auctionId, uint _amount) external {
 
     }
 
@@ -49,49 +86,23 @@ contract AuctionReward {
 
     }
 
-    constructor(
-        uint256 _startingPrice,
-        uint256 _discountRate,
-        address _tokenForSale,
-        address _tokenForPayment,
-        uint256 _amountForSale
-    ) {
-        seller = payable(msg.sender);
-        startingPrice = _startingPrice;
-        startAt = block.timestamp;
-        expiresAt = block.timestamp + DURATION;
-        discountRate = _discountRate;
-        require(
-            _startingPrice >= _discountRate * DURATION,
-            "starting price < min"
-        );
-        tokenForSale = IERC20(_tokenForSale);
-        tokenForPayment = IERC20(_tokenForPayment);
-        amountForSale = _amountForSale;
+    /// @notice Withdraws tokens from an expired auction
+    function withdrawExpiredAuction() external {
 
-        require(
-            tokenForSale.balanceOf(address(this)) >= amountForSale,
-            "insufficient tokens for sale"
-        );
     }
 
-    function getPrice() public view returns (uint256) {
-        uint256 timeElapsed = block.timestamp - startAt;
-        uint256 discount = discountRate * timeElapsed;
-        return startingPrice - discount;
+    /// @notice Gets the current price of the auction
+    /// @param _auctionId The ID of the auction
+    /// @return The current price of the auction in token amount of tokenForPayment
+    function getPrice(uint _auctionId) public view returns (uint) {
+        Auction storage auction = auctions[_auctionId];
+        uint timeElapsed = block.timestamp - auction.startAt;
+        uint priceDifference = auction.startingPrice - auction.endPrice;
+        uint duration = auction.expiresAt - auction.startAt;
+        uint discount = (priceDifference * timeElapsed) / duration;
+        uint currentPrice = auction.startingPrice - discount;
+
+        return currentPrice < auction.endPrice ? auction.endPrice : currentPrice;
     }
 
-    function buy(uint256 amount) external {
-        require(block.timestamp < expiresAt, "auction expired");
-        uint256 price = getPrice();
-        uint256 totalCost = price * amount;
-        require(amount <= amountForSale, "amount > tokens for sale");
-
-        tokenForPayment.transferFrom(msg.sender, address(this), totalCost);
-        tokenForSale.transfer(msg.sender, amount);
-
-        if (tokenForSale.balanceOf(address(this)) == 0) {
-            selfdestruct(seller);
-        }
-    }
 }
