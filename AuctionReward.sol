@@ -116,14 +116,17 @@ contract AuctionReward is ReentrancyGuard {
         uint _auctionChainID,
         uint _acceptingOfferChainID
     ) external nonReentrant {
+        // Check if the starting price is greater than the end price
         if (_startingPrice < _endPrice) {
             revert InvalidPriceRange();
         }
 
+        // Check if the seller has enough tokens to sell
         if (IERC20(_tokenForSale).balanceOf(msg.sender) < _amountForSale) {
             revert InsufficientTokensForSale();
         }
 
+        // Check if the contract has enough allowance to transfer the tokens, if not, approve the contract to transfer the tokens
         if (IERC20(_tokenForSale).allowance(msg.sender, address(this)) < _amountForSale) {
             bool success = IERC20(_tokenForSale).approve(address(this), _amountForSale);
             if (!success) {
@@ -131,10 +134,12 @@ contract AuctionReward is ReentrancyGuard {
             }
         }
 
+        // Transfer the tokens to the contract
         IERC20(_tokenForSale).transferFrom(msg.sender, address(this), _amountForSale);
         uint timeNow = block.timestamp;
         uint createdAuctionID = createdAuctionCounter;
 
+        // Create the auction
         createdAuctions[createdAuctionID] = CreatedAuction({
             auctionOpen: true,
             seller: msg.sender,
@@ -150,6 +155,7 @@ contract AuctionReward is ReentrancyGuard {
             acceptingOfferChainID: _acceptingOfferChainID
         });
 
+        // Increment the auction counter
         createdAuctionCounter++;
 
         emit AuctionCreated(
@@ -175,10 +181,12 @@ contract AuctionReward is ReentrancyGuard {
         address _tokenForAccepting,
         uint _amountPaying
         ) external nonReentrant {
+        // Check if an offer has already been made for the auction
         if (offerMade[_auctionId][_createdAuctionChainId]) {
             revert OfferAlreadyMade(_auctionId, _createdAuctionChainId);
         }
 
+        // Check if the contract has enough allowance to transfer the tokens, if not, approve the contract to transfer the tokens
         if (IERC20(_tokenForAccepting).allowance(msg.sender, address(this)) < _amountPaying) {
             bool success = IERC20(_tokenForAccepting).approve(address(this), _amountPaying);
             if (!success) {
@@ -186,10 +194,12 @@ contract AuctionReward is ReentrancyGuard {
             }
         }
 
+        // Transfer the tokens to the contract
         IERC20(_tokenForAccepting).transferFrom(msg.sender, address(this), _amountPaying);
         uint timeNow = block.timestamp;
         uint acceptedOfferID = acceptanceCounter;
 
+        // Create the acceptance offer
         acceptedAuctions[acceptedOfferID] = AcceptedAuction({
             auctionAccepted: false,
             auctionId: _auctionId,
@@ -201,7 +211,10 @@ contract AuctionReward is ReentrancyGuard {
             acceptOfferTimestamp: timeNow
         });
         
+        // Increment the acceptance counter
         acceptanceCounter++;
+
+        // Set the offer as made, so that no more offers can be made for the auction
         offerMade[_auctionId][_createdAuctionChainId] = true;
         
         emit AuctionAccepted(
@@ -220,10 +233,12 @@ contract AuctionReward is ReentrancyGuard {
     /// @param _auctionId The ID of the auction
     /// @param _createdAuctionChainId The chain ID of the created auction
     function resumeAuction(uint _auctionId, uint _createdAuctionChainId) external {
+        // Check if an offer has been made for the auction
         if (!offerMade[_auctionId][_createdAuctionChainId]) {
             revert NoOfferMade(_auctionId, _createdAuctionChainId);
         }
 
+        // Set the offer as not made, so that a new offer can be made for the auction
         offerMade[_auctionId][_createdAuctionChainId] = false;
 
         emit AuctionResumed(_auctionId, _createdAuctionChainId);
@@ -235,17 +250,21 @@ contract AuctionReward is ReentrancyGuard {
     function closeAuction(uint _auctionId, address _buyer) external nonReentrant {
         CreatedAuction storage createdAuction = createdAuctions[_auctionId];
         
+        // Check if the auction has expired
         if (createdAuction.expiresAt <= block.timestamp) {
             revert AuctionExpired(_auctionId);
         }
 
+        // Check if the auction is already closed
         if (!createdAuction.auctionOpen) {
             revert AuctionAlreadyClosed(_auctionId);
         }
         
+        // Set the auction as closed and set the buyer
         createdAuction.auctionOpen = false;
         createdAuction.buyer = _buyer;
 
+        // Transfer the tokenForSale to the buyer
         IERC20(createdAuction.tokenForSale).transferFrom(address(this), _buyer, createdAuction.amountForSale);
 
         emit AuctionClosed(_auctionId, _buyer, createdAuction.tokenForSale, createdAuction.amountForSale);
@@ -257,13 +276,16 @@ contract AuctionReward is ReentrancyGuard {
     function finalizeOffer(uint _acceptanceId, address _seller) external nonReentrant {
         AcceptedAuction storage acceptedAuction = acceptedAuctions[_acceptanceId];
         
+        // Check if the offer has already been finalized
         if (acceptedAuction.auctionAccepted) {
             revert OfferAlreadyFinalized(_acceptanceId);
         }
         
+        // Set the offer as finalized and set the seller
         acceptedAuction.auctionAccepted = true;
         acceptedAuction.seller = _seller;
 
+        // Transfer the tokenForAccepting to the seller
         IERC20(acceptedAuction.tokenForAccepting).transferFrom(address(this), _seller, acceptedAuction.amountPaying);
 
         emit OfferFinalized(_acceptanceId, _seller, acceptedAuction.tokenForAccepting, acceptedAuction.amountPaying);
@@ -274,18 +296,22 @@ contract AuctionReward is ReentrancyGuard {
     function withdrawExpiredAuction(uint _auctionId) external nonReentrant {
         CreatedAuction storage createdAuction = createdAuctions[_auctionId];
         
+        // Check if the auction has expired
         if (createdAuction.auctionOpen) {
             revert AuctionNotExpired(_auctionId);
         }
         
+        // Check if the auction is already closed
         if (createdAuction.buyer != address(0)) {
             revert AuctionAlreadyClosed(_auctionId);
         }
         
+        // Check if the seller is the one withdrawing
         if (createdAuction.seller != msg.sender) {
             revert UnauthorizedWithdrawal(_auctionId, msg.sender);
         }
         
+        // Transfer the tokenForSale to the seller
         uint amountToWithdraw = createdAuction.amountForSale;
         IERC20(createdAuction.tokenForSale).transferFrom(address(this), msg.sender, amountToWithdraw);
 
@@ -297,14 +323,17 @@ contract AuctionReward is ReentrancyGuard {
     function withdrawFailedOffer(uint _acceptanceId) external nonReentrant {
         AcceptedAuction storage acceptedAuction = acceptedAuctions[_acceptanceId];
         
+        // Check if the offer has already been finalized
         if (acceptedAuction.auctionAccepted) {
             revert OfferAlreadyFinalized(_acceptanceId);
         }
         
+        // Check if the buyer is the one withdrawing
         if (acceptedAuction.buyer != msg.sender) {
             revert UnauthorizedWithdrawal(_acceptanceId, msg.sender);
         }
         
+        // Transfer the tokenForAccepting to the buyer
         uint amountToWithdraw = acceptedAuction.amountPaying;
         IERC20(acceptedAuction.tokenForAccepting).transferFrom(address(this), msg.sender, amountToWithdraw);
 
@@ -319,16 +348,19 @@ contract AuctionReward is ReentrancyGuard {
     /// @param _auctionId The ID of the auction
     /// @return The current price of the auction in token amount of tokenForPayment
     function getPrice(uint _auctionId) public view returns (uint) {
+        // Check if the auction ID is valid
         if (_auctionId >= createdAuctionCounter) {
             revert InvalidAuctionID();
         }
 
         CreatedAuction storage auction = createdAuctions[_auctionId];
 
+        // Check if the auction has expired, if so, return the end price
         if (block.timestamp >= auction.expiresAt) {
             return auction.endPrice;
         }
 
+        // Calculate the current price of the auction
         uint timeElapsed = block.timestamp - auction.startAt;
         uint priceDifference = auction.startingPrice - auction.endPrice;
         uint duration = auction.expiresAt - auction.startAt;
@@ -343,17 +375,21 @@ contract AuctionReward is ReentrancyGuard {
     /// @param _timestamp The timestamp to calculate the price at
     /// @return The price of the auction at the specified timestamp in token amount of tokenForPayment
     function getPriceAtTime(uint _auctionId, uint _timestamp) public view returns (uint) {
+        // Check if the auction ID is valid
         if (_auctionId >= createdAuctionCounter) {
             revert InvalidAuctionID();
         }
 
         CreatedAuction storage auction = createdAuctions[_auctionId];
 
+        // Check if the auction has not started yet, if so, return the starting price
         if (_timestamp <= auction.startAt) {
             return auction.startingPrice;
+            // Check if the auction has expired, if so, return the end price
         } else if (_timestamp >= auction.expiresAt) {
             return auction.endPrice;
         } else {
+            // Calculate the price of the auction at the specified timestamp
             uint timeElapsed = _timestamp - auction.startAt;
             uint priceDifference = auction.startingPrice - auction.endPrice;
             uint duration = auction.expiresAt - auction.startAt;
