@@ -69,6 +69,7 @@ contract AuctionReward {
 
     error InvalidPriceRange();
     error InsufficientTokensForSale();
+    error InvalidAuctionID();
 
     constructor() {
     }
@@ -177,7 +178,16 @@ contract AuctionReward {
     /// @param _auctionId The ID of the auction
     /// @return The current price of the auction in token amount of tokenForPayment
     function getPrice(uint _auctionId) public view returns (uint) {
+        if (_auctionId >= createdAuctionCounter) {
+            revert InvalidAuctionID();
+        }
+
         CreatedAuction storage auction = createdAuctions[_auctionId];
+
+        if (block.timestamp >= auction.expiresAt) {
+            return auction.endPrice;
+        }
+
         uint timeElapsed = block.timestamp - auction.startAt;
         uint priceDifference = auction.startingPrice - auction.endPrice;
         uint duration = auction.expiresAt - auction.startAt;
@@ -185,6 +195,32 @@ contract AuctionReward {
         uint currentPrice = auction.startingPrice - discount;
 
         return currentPrice < auction.endPrice ? auction.endPrice : currentPrice;
+    }
+
+    /// @notice Gets the price of an auction at a specified timestamp
+    /// @param _auctionId The ID of the auction
+    /// @param _timestamp The timestamp to calculate the price at
+    /// @return The price of the auction at the specified timestamp in token amount of tokenForPayment
+    function getPriceAtTime(uint _auctionId, uint _timestamp) public view returns (uint) {
+        if (_auctionId >= createdAuctionCounter) {
+            revert InvalidAuctionID();
+        }
+
+        CreatedAuction storage auction = createdAuctions[_auctionId];
+
+        if (_timestamp <= auction.startAt) {
+            return auction.startingPrice;
+        } else if (_timestamp >= auction.expiresAt) {
+            return auction.endPrice;
+        } else {
+            uint timeElapsed = _timestamp - auction.startAt;
+            uint priceDifference = auction.startingPrice - auction.endPrice;
+            uint duration = auction.expiresAt - auction.startAt;
+            uint discount = (priceDifference * timeElapsed) / duration;
+            uint price = auction.startingPrice - discount;
+
+            return price < auction.endPrice ? auction.endPrice : price;
+        }
     }
 
     /// @notice Gets an auctions information
