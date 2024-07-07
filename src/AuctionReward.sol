@@ -412,11 +412,31 @@ contract AuctionReward is ReentrancyGuard {
         return createdAuctions[_auctionId];
     }
 
+    /// @notice Gets an array of all created auctions
+    /// @return An array of all created auctions
+    function getAllCreatedAuctions() external view returns (CreatedAuction[] memory) {
+        CreatedAuction[] memory auctions = new CreatedAuction[](createdAuctionCounter);
+        for (uint i = 0; i < createdAuctionCounter; i++) {
+            auctions[i] = createdAuctions[i];
+        }
+        return auctions;
+    }
+
     /// @notice Gets an accepted auctions information
     /// @param _acceptanceId The ID of the acceptance
     /// @return The acceptance information
     function getAcceptedAuctionInfo(uint _acceptanceId) external view returns (AcceptedAuction memory) {
         return acceptedAuctions[_acceptanceId];
+    }
+
+    /// @notice Gets an array of all accepted auctions
+    /// @return An array of all accepted auctions
+    function getAllAcceptedAuctions() external view returns (AcceptedAuction[] memory) {
+        AcceptedAuction[] memory auctions = new AcceptedAuction[](acceptanceCounter);
+        for (uint i = 0; i < acceptanceCounter; i++) {
+            auctions[i] = acceptedAuctions[i];
+        }
+        return auctions;
     }
 
 }
