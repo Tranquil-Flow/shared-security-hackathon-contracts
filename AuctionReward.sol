@@ -90,6 +90,7 @@ contract AuctionReward {
     }
 
     /// @notice Sets up a Dutch auction
+    /// @dev Param inputs defined in documentation of CreatedAuction struct
     function createAuction(
         address _tokenForSale,
         address _tokenForPayment,
@@ -145,6 +146,7 @@ contract AuctionReward {
     }
 
     /// @notice Accepts an auction that has been created on another chain
+    /// @dev Param inputs defined in documentation of AcceptedAuction struct
     function acceptAuction(uint _auctionId, uint _createdAuctionChainId, address _tokenForAccepting, uint _amountPaying) external {
         if (offerMade[_auctionId][_createdAuctionChainId]) {
             revert OfferAlreadyMade(_auctionId, _createdAuctionChainId);
@@ -228,11 +230,8 @@ contract AuctionReward {
         emit OfferFinalized(_acceptanceId, _seller, acceptedAuction.tokenForAccepting, acceptedAuction.amountPaying);
     }
 
-    /// @notice Claims rewards for AVS attestors
-    function claimRewards() external {
-    }
-
     /// @notice Withdraws the tokenForSale from an expired auction
+    /// @param _auctionId The ID of the auction
     function withdrawExpiredAuction(uint _auctionId) external {
         CreatedAuction storage createdAuction = createdAuctions[_auctionId];
         
@@ -255,6 +254,7 @@ contract AuctionReward {
     }
 
     /// @notice Withdraws the tokenForAccepting from a failed offer acceptance
+    /// @param _acceptanceId The ID of the acceptance offer
     function withdrawFailedOffer(uint _acceptanceId) external {
         AcceptedAuction storage acceptedAuction = acceptedAuctions[_acceptanceId];
         
@@ -270,6 +270,10 @@ contract AuctionReward {
         IERC20(acceptedAuction.tokenForAccepting).transferFrom(address(this), msg.sender, amountToWithdraw);
 
         emit FailedOfferWithdraw(_acceptanceId, msg.sender, acceptedAuction.tokenForAccepting, amountToWithdraw);
+    }
+
+    /// @notice Claims rewards for AVS attestors
+    function claimRewards() external {
     }
 
     /// @notice Gets the current price of a created auction
