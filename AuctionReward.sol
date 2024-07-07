@@ -43,7 +43,7 @@ contract AuctionReward {
     }
 
     uint public acceptanceCounter;
-    mapping(uint => AuctionAcceptance) public auctionAcceptances;
+    mapping(uint => AcceptedAuction) public acceptedAuctions;
 
     event AuctionCreated(
         uint indexed auctionId,
@@ -64,6 +64,7 @@ contract AuctionReward {
         uint indexed auctionId,
         uint indexed createdAuctionChainId,
         address indexed buyer,
+        address tokenForAccepting,
         uint amountPaying,
         uint acceptOfferTimestamp
     );
@@ -86,7 +87,7 @@ contract AuctionReward {
         uint _auctionChainID,
         uint _acceptingOfferChainID
     ) external {
-        if (_startingPrice = _endPrice) {
+        if (_startingPrice < _endPrice) {
             revert InvalidPriceRange();
         }
 
@@ -97,12 +98,12 @@ contract AuctionReward {
         uint timeNow = block.timestamp;
         IERC20(_tokenForSale).transferFrom(msg.sender, address(this), _amountForSale);
 
-        createdAuctions[createdAuctionCounter] = Auction({
+        createdAuctions[createdAuctionCounter] = CreatedAuction({
             auctionOpen: true,
             seller: msg.sender,
             buyer: address(0),
-            tokenForSale: IERC20(_tokenForSale),
-            tokenForPayment: IERC20(_tokenForPayment),
+            tokenForSale: _tokenForSale,
+            tokenForPayment: _tokenForPayment,
             amountForSale: _amountForSale,
             startingPrice: _startingPrice,
             endPrice: _endPrice,
@@ -112,10 +113,8 @@ contract AuctionReward {
             acceptingOfferChainID: _acceptingOfferChainID
         });
 
-        createdAuctionCounter++;
-
         emit AuctionCreated(
-            auctionId,
+            createdAuctionCounter,
             msg.sender,
             _tokenForSale,
             _tokenForPayment,
@@ -124,9 +123,11 @@ contract AuctionReward {
             _endPrice,
             timeNow,
             timeNow + _duration,
-            _auctionChainId,
-            _acceptingOfferChainId
+            _auctionChainID,
+            _acceptingOfferChainID
         );
+
+        createdAuctionCounter++;
     }
 
     /// @notice Accepts an auction that has been created on another chain
@@ -142,7 +143,7 @@ contract AuctionReward {
             buyer: msg.sender,
             tokenForAccepting: _tokenForAccepting,
             amountPaying: _amountPaying,
-            timestamp: timeNow
+            acceptOfferTimestamp: timeNow
         });
         
         acceptanceCounter++;
@@ -152,7 +153,7 @@ contract AuctionReward {
             _auctionId,
             _createdAuctionChainId,
             msg.sender,
-            _tokenForAccepting
+            _tokenForAccepting,
             _amountPaying,
             timeNow
         );
