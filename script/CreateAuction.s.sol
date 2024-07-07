@@ -3,9 +3,16 @@ pragma solidity 0.8.25;
 
 import {Script, console2} from "forge-std/Script.sol";
 import {AuctionReward} from "../src/AuctionReward.sol";
-import {TestToken} from "../script/DeployTestTokens.s.sol"; // Make sure this import path is correct
+import {TestToken} from "../script/DeployTestTokens.s.sol"; // Ensure this import path is correct
 
 contract CreateAuction is Script {
+
+    // Helper function to convert a decimal amount to the smallest unit
+    function convertToSmallestUnit(uint256 wholeNumber, uint256 fractionalNumber, uint8 decimals) internal pure returns (uint256) {
+        require(fractionalNumber < 10**decimals, "Fractional part must be less than 10^decimals");
+        return (wholeNumber * 10**decimals) + (fractionalNumber * 10**(decimals - 1));
+    }
+
     function run() external {
         uint256 creatorPrivateKey = vm.envUint("CREATOR_PRIVATE_KEY");
         address creator = vm.addr(creatorPrivateKey);
@@ -13,8 +20,8 @@ contract CreateAuction is Script {
 
         // Contract and token addresses
         AuctionReward auctionReward = AuctionReward(0xafaFB84a52898Efe2CC7412FCb8d999681C61bbc);
-        address tokenForSale = 0x4cB2a1552a51557aB049A57f58a152fB832B159f;
-        address tokenForPayment = 0x1FB7d6C5eb45468fB914737A20506F1aFB80bBd9;
+        address tokenForSale = 0x1FB7d6C5eb45468fB914737A20506F1aFB80bBd9;
+        address tokenForPayment = 0x4cB2a1552a51557aB049A57f58a152fB832B159f;
 
         // Fetch token details
         TestToken tokenForSaleContract = TestToken(tokenForSale);
@@ -25,10 +32,11 @@ contract CreateAuction is Script {
         uint8 tokenBuyDecimals = tokenForPaymentContract.decimals();
 
         // Auction parameters
-        uint256 startingPrice = 3200 * 10**tokenBuyDecimals;
-        uint256 endPrice = 3150 * 10**tokenBuyDecimals;
-        uint256 duration = 3 days;
-        uint256 amountForSale = 1 * 10**tokenSellDecimals; // 1 WETH
+        // First number is the whole number, second number is the fractional part
+        uint256 startingPrice = convertToSmallestUnit(2, 1, tokenBuyDecimals);
+        uint256 endPrice = convertToSmallestUnit(1, 9, tokenBuyDecimals);
+        uint256 duration = 14 days;
+        uint256 amountForSale = 6000 * 10**tokenSellDecimals;
         uint256 auctionChainID = 17000; // Holesky testnet
         uint256 acceptingOfferChainID = 80002; // Amoy testnet
 
@@ -55,8 +63,8 @@ contract CreateAuction is Script {
         console2.log("Created auction with tokenForSale: %s (%s)", tokenForSale, tokenSellTicker);
         console2.log("TokenForPayment: %s (%s)", tokenForPayment, tokenBuyTicker);
         console2.log("AmountForSale: %s %s", amountForSale / 10**tokenSellDecimals, tokenSellTicker);
-        console2.log("StartingPrice: %s %s", startingPrice / 10**tokenBuyDecimals, tokenBuyTicker);
-        console2.log("EndPrice: %s %s", endPrice / 10**tokenBuyDecimals, tokenBuyTicker);
+        console2.log("StartingPrice: %d.%d %s", startingPrice / 10**tokenBuyDecimals, (startingPrice % 10**tokenBuyDecimals) / 10**(tokenBuyDecimals - 1), tokenBuyTicker);
+        console2.log("EndPrice: %d.%d %s", endPrice / 10**tokenBuyDecimals, (endPrice % 10**tokenBuyDecimals) / 10**(tokenBuyDecimals - 1), tokenBuyTicker);
         console2.log("Duration: %s seconds", duration);
     }
 }
