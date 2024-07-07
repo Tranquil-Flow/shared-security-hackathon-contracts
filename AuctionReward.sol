@@ -61,7 +61,6 @@ contract AuctionReward {
         uint indexed auctionChainId,
         uint indexed acceptingOfferChainId
     );
-
     event AuctionAccepted(
         uint indexed acceptanceId,
         uint indexed auctionId,
@@ -71,6 +70,9 @@ contract AuctionReward {
         uint amountPaying,
         uint acceptOfferTimestamp
     );
+    event AuctionResumed(uint auctionId, uint createdAuctionChainId);
+    event AuctionClosed(uint auctionId, address buyer, address tokenForSale, uint amountForSale);
+    event OfferFinalized(uint acceptanceId, address seller, address tokenForAccepting, uint amountPaying);
 
     error InvalidPriceRange();
     error InsufficientTokensForSale();
@@ -78,6 +80,7 @@ contract AuctionReward {
     error OfferAlreadyMade(uint auctionId, uint chainId);
     error NoOfferMade(uint auctionId, uint chainId);
     error OfferAlreadyFinalized(uint acceptanceId);
+    error AuctionAlreadyClosed(uint auctionId);
 
     constructor() {
     }
@@ -181,14 +184,44 @@ contract AuctionReward {
         }
 
         offerMade[_auctionId][_createdAuctionChainId] = false;
+
+        emit AuctionResumed(_auctionId, _createdAuctionChainId);
     }
 
     /// @notice Closes an auction once a valid offer has been made and AVS attestors have validated the transaction
-    function closeAuction() external {
+    /// @param _auctionId The ID of the auction
+    /// @param _buyer The address of the buyer of the auction
+    function closeAuction(uint _auctionId, address _buyer) external {
+        CreatedAuction storage createdAuction = createdAuctions[_auctionId];
+        
+        if (!createdAuction.auctionOpen) {
+            revert AuctionAlreadyClosed(_auctionId);
+        }
+        
+        createdAuction.auctionOpen = false;
+        createdAuction.buyer = _buyer;
+
+        IERC20(createdAuction.tokenForSale).transferFrom(address(this), _buyer, createdAuction.amountForSale);
+
+        emit AuctionClosed(_auctionId, _buyer, createdAuction.tokenForSale, createdAuction.amountForSale);
     }
 
     /// @notice Finalizes an auction offer once the AVS attestors have validated the auction
-    function finalizeOffer() external {
+    /// @param _acceptanceId The ID of the acceptance
+    /// @param _seller The address of the seller of the auction
+    function finalizeOffer(uint _acceptanceId, address _seller) external {
+        AcceptedAuction storage acceptedAuction = acceptedAuctions[_acceptanceId];
+        
+        if (acceptedAuction.auctionAccepted) {
+            revert OfferAlreadyFinalized(_acceptanceId);
+        }
+        
+        acceptedAuction.auctionAccepted = true;
+        acceptedAuction.seller = _seller;
+
+        IERC20(acceptedAuction.tokenForAccepting).transferFrom(address(this), _seller, acceptedAuction.amountPaying);
+
+        emit OfferFinalized(_acceptanceId, _seller, acceptedAuction.tokenForAccepting, acceptedAuction.amountPaying);
     }
 
     /// @notice Claims rewards for AVS attestors
