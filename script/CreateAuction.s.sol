@@ -20,8 +20,8 @@ contract CreateAuction is Script {
 
         // Contract and token addresses
         AuctionReward auctionReward = AuctionReward(0xafaFB84a52898Efe2CC7412FCb8d999681C61bbc);
-        address tokenForSale = 0x1FB7d6C5eb45468fB914737A20506F1aFB80bBd9;
-        address tokenForPayment = 0x4cB2a1552a51557aB049A57f58a152fB832B159f;
+        address tokenForSale = 0x4cB2a1552a51557aB049A57f58a152fB832B159f;
+        address tokenForPayment = 0x1FB7d6C5eb45468fB914737A20506F1aFB80bBd9;
 
         // Fetch token details
         TestToken tokenForSaleContract = TestToken(tokenForSale);
@@ -33,10 +33,10 @@ contract CreateAuction is Script {
 
         // Auction parameters
         // First number is the whole number, second number is the fractional part
-        uint256 startingPrice = convertToSmallestUnit(2, 1, tokenBuyDecimals);
-        uint256 endPrice = convertToSmallestUnit(1, 9, tokenBuyDecimals);
-        uint256 duration = 14 days;
-        uint256 amountForSale = 6000 * 10**tokenSellDecimals;
+        uint256 startingPrice = convertToSmallestUnit(3058, 0, tokenBuyDecimals);
+        uint256 endPrice = convertToSmallestUnit(3042, 0, tokenBuyDecimals);
+        uint256 duration = 4 days;
+        uint256 amountForSale = 1 * 10**tokenSellDecimals;
         uint256 auctionChainID = 17000; // Holesky testnet
         uint256 acceptingOfferChainID = 80002; // Amoy testnet
 
@@ -46,8 +46,15 @@ contract CreateAuction is Script {
         // Approve the AuctionReward contract to spend the tokens
         tokenForSaleContract.approve(address(auctionReward), amountForSale);
 
-        // Create the auction and capture the auction ID
-        uint256 auctionId = auctionReward.createAuction(
+        // Get the current auction counter to determine the auction ID
+        uint256 auctionId = auctionReward.createdAuctionCounter();
+
+        // Get current block timestamp
+        uint256 startAt = block.timestamp;
+        uint256 expiresAt = startAt + duration;
+
+        // Create the auction
+        auctionReward.createAuction(
             tokenForSale,
             tokenForPayment,
             startingPrice,
@@ -67,5 +74,7 @@ contract CreateAuction is Script {
         console2.log("StartingPrice: %d.%d %s", startingPrice / 10**tokenBuyDecimals, (startingPrice % 10**tokenBuyDecimals) / 10**(tokenBuyDecimals - 1), tokenBuyTicker);
         console2.log("EndPrice: %d.%d %s", endPrice / 10**tokenBuyDecimals, (endPrice % 10**tokenBuyDecimals) / 10**(tokenBuyDecimals - 1), tokenBuyTicker);
         console2.log("Duration: %s seconds", duration);
+        console2.log("Auction starts at (UNIX): %s", startAt);
+        console2.log("Auction ends at (UNIX): %s", expiresAt);
     }
 }
