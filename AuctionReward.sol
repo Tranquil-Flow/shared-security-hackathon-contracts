@@ -73,6 +73,8 @@ contract AuctionReward {
     event AuctionResumed(uint auctionId, uint createdAuctionChainId);
     event AuctionClosed(uint auctionId, address buyer, address tokenForSale, uint amountForSale);
     event OfferFinalized(uint acceptanceId, address seller, address tokenForAccepting, uint amountPaying);
+    event ExpiredAuctionWithdraw(uint auctionId, address seller, address tokenForSale, uint amountForSale);
+    event FailedOfferWithdraw(uint acceptanceId, address buyer, address tokenForAccepting, uint amountPaying);
 
     error InvalidPriceRange();
     error InsufficientTokensForSale();
@@ -81,6 +83,8 @@ contract AuctionReward {
     error NoOfferMade(uint auctionId, uint chainId);
     error OfferAlreadyFinalized(uint acceptanceId);
     error AuctionAlreadyClosed(uint auctionId);
+    error AuctionNotExpired(uint _auctionId);
+    error UnauthorizedWithdrawal(uint _auctionId, address _withdrawer);
 
     constructor() {
     }
@@ -228,12 +232,44 @@ contract AuctionReward {
     function claimRewards() external {
     }
 
-    /// @notice Withdraws tokens from an expired auction
-    function withdrawExpiredAuction() external {
+    /// @notice Withdraws the tokenForSale from an expired auction
+    function withdrawExpiredAuction(uint _auctionId) external {
+        CreatedAuction storage createdAuction = createdAuctions[_auctionId];
+        
+        if (createdAuction.auctionOpen) {
+            revert AuctionNotExpired(_auctionId);
+        }
+        
+        if (createdAuction.buyer != address(0)) {
+            revert AuctionAlreadyClosed(_auctionId);
+        }
+        
+        if (createdAuction.seller != msg.sender) {
+            revert UnauthorizedWithdrawal(_auctionId, msg.sender);
+        }
+        
+        uint amountToWithdraw = createdAuction.amountForSale;
+        IERC20(createdAuction.tokenForSale).transferFrom(address(this), msg.sender, amountToWithdraw);
+
+        emit ExpiredAuctionWithdraw(_auctionId, msg.sender, createdAuction.tokenForSale, amountToWithdraw);
     }
 
-    /// @notice Withdraws tokens from a failed offer acceptance
-    function withdrawFailedOffer() external {
+    /// @notice Withdraws the tokenForAccepting from a failed offer acceptance
+    function withdrawFailedOffer(uint _acceptanceId) external {
+        AcceptedAuction storage acceptedAuction = acceptedAuctions[_acceptanceId];
+        
+        if (acceptedAuction.auctionAccepted) {
+            revert OfferAlreadyFinalized(_acceptanceId);
+        }
+        
+        if (acceptedAuction.buyer != msg.sender) {
+            revert UnauthorizedWithdrawal(_acceptanceId, msg.sender);
+        }
+        
+        uint amountToWithdraw = acceptedAuction.amountPaying;
+        IERC20(acceptedAuction.tokenForAccepting).transferFrom(address(this), msg.sender, amountToWithdraw);
+
+        emit FailedOfferWithdraw(_acceptanceId, msg.sender, acceptedAuction.tokenForAccepting, amountToWithdraw);
     }
 
     /// @notice Gets the current price of a created auction
