@@ -7,7 +7,7 @@ out = "out"
 libs = ["lib"]
 [rpc_endpoints]
 holesky = "https://ethereum-holesky-rpc.publicnode.com"
-amoy = "https://polygon-amoy.drpc.org"
+amoy = "https://polygon-amoy-bor-rpc.publicnode.com"
 [etherscan]
 holesky = { key = "WY4F1JEZT6T364HA9N7R8SANWEEMVY6AP3" }
 amoy = { key = "BBTE2Q5FRZWFNIQY53PJGZTVVJFR1EYQFW" }
