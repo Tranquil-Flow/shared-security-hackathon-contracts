@@ -84,7 +84,8 @@ contract AuctionReward is ReentrancyGuard {
         address buyer,
         address tokenForAccepting,
         uint amountPaying,
-        uint acceptOfferTimestamp
+        uint acceptOfferTimestamp,
+        uint acceptOfferBlockNumber
     );
     event AuctionResumed(uint auctionId, uint createdAuctionChainId);
     event AuctionClosed(uint auctionId, address buyer, address tokenForSale, uint amountForSale);
@@ -227,7 +228,8 @@ contract AuctionReward is ReentrancyGuard {
             msg.sender,
             _tokenForAccepting,
             _amountPaying,
-            timeNow
+            timeNow,
+            block.number
         );
 
     }
