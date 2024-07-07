@@ -1,9 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
+abstract contract ReentrancyGuard {
+    bool private _locked;
+
+    modifier nonReentrant() {
+        require(!_locked, "Reentrant call");
+        _locked = true;
+        _;
+        _locked = false;
+    }
+}
+
 interface IERC20 {
     function transferFrom(address from, address to, uint256 amount) external;
     function balanceOf(address account) external view returns (uint256);
+    function allowance(address owner, address spender) external view returns (uint256);
+    function approve(address spender, uint256 amount) external returns (bool);
 }
 
 // TODO: Implement Fees for Auctions
@@ -13,7 +26,7 @@ interface IERC20 {
 /// @author Tranquil-Flow
 /// @notice A contract for P2P transferring of tokens across multiple chains using Dutch Auctions
 /// @dev Verification of auctions is done by AVS attestors
-contract AuctionReward {
+contract AuctionReward is ReentrancyGuard {
     struct CreatedAuction {
         bool auctionOpen;            // True = Auction is open, False = Auction is closed
         address seller;              // Address of the auction creator
@@ -83,8 +96,10 @@ contract AuctionReward {
     error NoOfferMade(uint auctionId, uint chainId);
     error OfferAlreadyFinalized(uint acceptanceId);
     error AuctionAlreadyClosed(uint auctionId);
+    error AuctionExpired(uint auctionId);
     error AuctionNotExpired(uint _auctionId);
     error UnauthorizedWithdrawal(uint _auctionId, address _withdrawer);
+    error InsufficientAllowance();
 
     constructor() {
     }
@@ -100,13 +115,20 @@ contract AuctionReward {
         uint _amountForSale,
         uint _auctionChainID,
         uint _acceptingOfferChainID
-    ) external {
+    ) external nonReentrant {
         if (_startingPrice < _endPrice) {
             revert InvalidPriceRange();
         }
 
         if (IERC20(_tokenForSale).balanceOf(msg.sender) < _amountForSale) {
             revert InsufficientTokensForSale();
+        }
+
+        if (IERC20(_tokenForSale).allowance(msg.sender, address(this)) < _amountForSale) {
+            bool success = IERC20(_tokenForSale).approve(address(this), _amountForSale);
+            if (!success) {
+                revert InsufficientAllowance();
+            }
         }
 
         IERC20(_tokenForSale).transferFrom(msg.sender, address(this), _amountForSale);
@@ -147,10 +169,23 @@ contract AuctionReward {
 
     /// @notice Accepts an auction that has been created on another chain
     /// @dev Param inputs defined in documentation of AcceptedAuction struct
-    function acceptAuction(uint _auctionId, uint _createdAuctionChainId, address _tokenForAccepting, uint _amountPaying) external {
+    function acceptAuction(
+        uint _auctionId,
+        uint _createdAuctionChainId,
+        address _tokenForAccepting,
+        uint _amountPaying
+        ) external nonReentrant {
         if (offerMade[_auctionId][_createdAuctionChainId]) {
             revert OfferAlreadyMade(_auctionId, _createdAuctionChainId);
         }
+
+        if (IERC20(_tokenForAccepting).allowance(msg.sender, address(this)) < _amountPaying) {
+            bool success = IERC20(_tokenForAccepting).approve(address(this), _amountPaying);
+            if (!success) {
+                revert InsufficientAllowance();
+            }
+        }
+
         IERC20(_tokenForAccepting).transferFrom(msg.sender, address(this), _amountPaying);
         uint timeNow = block.timestamp;
         uint acceptedOfferID = acceptanceCounter;
@@ -197,9 +232,13 @@ contract AuctionReward {
     /// @notice Closes an auction once a valid offer has been made and AVS attestors have validated the transaction
     /// @param _auctionId The ID of the auction
     /// @param _buyer The address of the buyer of the auction
-    function closeAuction(uint _auctionId, address _buyer) external {
+    function closeAuction(uint _auctionId, address _buyer) external nonReentrant {
         CreatedAuction storage createdAuction = createdAuctions[_auctionId];
         
+        if (createdAuction.expiresAt <= block.timestamp) {
+            revert AuctionExpired(_auctionId);
+        }
+
         if (!createdAuction.auctionOpen) {
             revert AuctionAlreadyClosed(_auctionId);
         }
@@ -215,7 +254,7 @@ contract AuctionReward {
     /// @notice Finalizes an auction offer once the AVS attestors have validated the auction
     /// @param _acceptanceId The ID of the acceptance
     /// @param _seller The address of the seller of the auction
-    function finalizeOffer(uint _acceptanceId, address _seller) external {
+    function finalizeOffer(uint _acceptanceId, address _seller) external nonReentrant {
         AcceptedAuction storage acceptedAuction = acceptedAuctions[_acceptanceId];
         
         if (acceptedAuction.auctionAccepted) {
@@ -232,7 +271,7 @@ contract AuctionReward {
 
     /// @notice Withdraws the tokenForSale from an expired auction
     /// @param _auctionId The ID of the auction
-    function withdrawExpiredAuction(uint _auctionId) external {
+    function withdrawExpiredAuction(uint _auctionId) external nonReentrant {
         CreatedAuction storage createdAuction = createdAuctions[_auctionId];
         
         if (createdAuction.auctionOpen) {
@@ -255,7 +294,7 @@ contract AuctionReward {
 
     /// @notice Withdraws the tokenForAccepting from a failed offer acceptance
     /// @param _acceptanceId The ID of the acceptance offer
-    function withdrawFailedOffer(uint _acceptanceId) external {
+    function withdrawFailedOffer(uint _acceptanceId) external nonReentrant {
         AcceptedAuction storage acceptedAuction = acceptedAuctions[_acceptanceId];
         
         if (acceptedAuction.auctionAccepted) {
@@ -328,14 +367,14 @@ contract AuctionReward {
     /// @notice Gets a created auctions information
     /// @param _auctionId The ID of the auction
     /// @return The auction information
-    function getCreatedAuctionInfo(uint _auctionId) public view returns (CreatedAuction memory) {
+    function getCreatedAuctionInfo(uint _auctionId) external view returns (CreatedAuction memory) {
         return createdAuctions[_auctionId];
     }
 
     /// @notice Gets an accepted auctions information
     /// @param _acceptanceId The ID of the acceptance
     /// @return The acceptance information
-    function getAcceptedAuctionInfo(uint _acceptanceId) public view returns (AcceptedAuction memory) {
+    function getAcceptedAuctionInfo(uint _acceptanceId) external view returns (AcceptedAuction memory) {
         return acceptedAuctions[_acceptanceId];
     }
 
