@@ -32,8 +32,8 @@ contract AuctionReward is ReentrancyGuard {
         bool auctionOpen;            // True = Auction is open, False = Auction is closed
         address seller;              // Address of the auction creator
         address buyer;               // Address of the auction buyer
-        address tokenForSale;        // Token being sold
-        address tokenForPayment;     // Token accepted as payment
+        address tokenForSale;        // Token being sold on auctionChainID
+        address tokenForPayment;     // Token address being used as payment on acceptingOfferChainID
         uint amountForSale;          // Amount of tokenForSale being sold
         uint startingPrice;          // Starting price of the auction in token amount of tokenForPayment
         uint endPrice;               // Ending price of the auction in token amount of tokenForPayment
