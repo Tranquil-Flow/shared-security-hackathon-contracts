@@ -12,13 +12,14 @@ interface IERC20 {
 /// @title AuctionReward
 /// @author Tranquil-Flow
 /// @notice A contract for P2P transferring of tokens across multiple chains using Dutch Auctions
+/// @dev Verification of auctions is done by AVS attestors
 contract AuctionReward {
     struct CreatedAuction {
         bool auctionOpen;            // True = Auction is open, False = Auction is closed
         address seller;              // Address of the auction creator
         address buyer;               // Address of the auction buyer
-        address tokenForSale;         // Token being sold
-        address tokenForPayment;      // Token accepted as payment
+        address tokenForSale;        // Token being sold
+        address tokenForPayment;     // Token accepted as payment
         uint amountForSale;          // Amount of tokenForSale being sold
         uint startingPrice;          // Amount of tokenForPayment for the amountForSale of tokenForSale at the start of the auction
         uint endPrice;               // Amount of tokenForPayment for the amountForSale of tokenForSale at the end of the auction
@@ -128,7 +129,7 @@ contract AuctionReward {
         );
     }
 
-    /// @notice Accepts an auction
+    /// @notice Accepts an auction that has been created on another chain
     function acceptAuction(uint _auctionId, uint _createdAuctionChainId, address _tokenForAccepting, uint _amountPaying) external {
         uint timeNow = block.timestamp;
         IERC20(_tokenForAccepting).transferFrom(msg.sender, address(this), _amountPaying);
@@ -223,11 +224,18 @@ contract AuctionReward {
         }
     }
 
-    /// @notice Gets an auctions information
+    /// @notice Gets a created auctions information
     /// @param _auctionId The ID of the auction
     /// @return The auction information
-    function getAuctionInfo(uint _auctionId) public view returns (CreatedAuction memory) {
+    function getCreatedAuctionInfo(uint _auctionId) public view returns (CreatedAuction memory) {
         return createdAuctions[_auctionId];
+    }
+
+    /// @notice Gets an accepted auctions information
+    /// @param _acceptanceId The ID of the acceptance
+    /// @return The acceptance information
+    function getAcceptedAuctionInfo(uint _acceptanceId) public view returns (AcceptedAuction memory) {
+        return acceptedAuctions[_acceptanceId];
     }
 
 }
