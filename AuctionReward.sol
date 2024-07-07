@@ -33,20 +33,21 @@ contract AuctionReward {
     mapping(uint => CreatedAuction) public createdAuctions;
 
     struct AcceptedAuction {
+        bool auctionAccepted;        // True = Auction offer is accepted, False = Auction is not accepted
         uint auctionId;              // Auction ID of the accepted auction
         uint createdAuctionChainId;  // Chain ID of where the created auction is
         address seller;              // Address of the auction seller
         address buyer;               // Address of the auction buyer
         address tokenForAccepting;   // Token being used as payment to accept auction
         uint amountPaying;           // Amount of tokenForAccepting being paid
-        uint acceptOffertimestamp;   // Timestamp of when the auction was accepted
+        uint acceptOfferTimestamp;   // Timestamp of when the auction was accepted
     }
 
     uint public acceptanceCounter;
     mapping(uint => AcceptedAuction) public acceptedAuctions;
 
     event AuctionCreated(
-        uint indexed auctionId,
+        uint auctionId,
         address seller,
         address indexed tokenForSale,
         address indexed tokenForPayment,
@@ -56,11 +57,11 @@ contract AuctionReward {
         uint startAt,
         uint expiresAt,
         uint indexed auctionChainId,
-        uint indexed acceptingOfferChainId
+        uint acceptingOfferChainId
     );
 
     event AuctionAccepted(
-        uint indexed acceptanceId,
+        uint acceptanceId,
         uint indexed auctionId,
         uint indexed createdAuctionChainId,
         address indexed buyer,
@@ -137,6 +138,7 @@ contract AuctionReward {
         
         uint acceptanceId = acceptanceCounter;
         acceptedAuctions[acceptanceId] = AcceptedAuction({
+            auctionAccepted: false,
             auctionId: _auctionId,
             createdAuctionChainId: _createdAuctionChainId,
             seller: address(0),
