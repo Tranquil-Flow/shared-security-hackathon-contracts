@@ -44,6 +44,29 @@ contract AuctionReward {
     uint public acceptanceCounter;
     mapping(uint => AuctionAcceptance) public auctionAcceptances;
 
+    event AuctionCreated(
+        uint indexed auctionId,
+        address seller,
+        address indexed tokenForSale,
+        address indexed tokenForPayment,
+        uint amountForSale,
+        uint startingPrice,
+        uint endPrice,
+        uint startAt,
+        uint expiresAt,
+        uint indexed auctionChainId,
+        uint indexed acceptingOfferChainId
+    );
+
+    event AuctionAccepted(
+        uint indexed acceptanceId,
+        uint indexed auctionId,
+        uint indexed createdAuctionChainId,
+        address indexed buyer,
+        uint amountPaying,
+        uint acceptOfferTimestamp
+    );
+
     error InvalidPriceRange();
     error InsufficientTokensForSale();
 
@@ -69,6 +92,7 @@ contract AuctionReward {
             revert InsufficientTokensForSale();
         }
 
+        uint timeNow = block.timestamp;
         IERC20(_tokenForSale).transferFrom(msg.sender, address(this), _amountForSale);
 
         createdAuctions[createdAuctionCounter] = Auction({
@@ -80,19 +104,33 @@ contract AuctionReward {
             amountForSale: _amountForSale,
             startingPrice: _startingPrice,
             endPrice: _endPrice,
-            startAt: block.timestamp,
-            expiresAt: block.timestamp + _duration,
+            startAt: timeNow,
+            expiresAt: timeNow + _duration,
             auctionChainID: _auctionChainID,
             acceptingOfferChainID: _acceptingOfferChainID
         });
 
         createdAuctionCounter++;
+
+        emit AuctionCreated(
+            auctionId,
+            msg.sender,
+            _tokenForSale,
+            _tokenForPayment,
+            _amountForSale,
+            _startingPrice,
+            _endPrice,
+            timeNow,
+            timeNow + _duration,
+            _auctionChainId,
+            _acceptingOfferChainId
+        );
     }
 
     /// @notice Accepts an auction
     function acceptAuction(uint _auctionId, uint _createdAuctionChainId, address _tokenForAccepting, uint _amountPaying) external {
-        
-        IERC20(_tokenForAccepting).transferFrom(msg.sender, address(this), _amount);
+        uint timeNow = block.timestamp;
+        IERC20(_tokenForAccepting).transferFrom(msg.sender, address(this), _amountPaying);
         
         uint acceptanceId = acceptanceCounter;
         acceptedAuctions[acceptanceId] = AcceptedAuction({
@@ -102,11 +140,21 @@ contract AuctionReward {
             buyer: msg.sender,
             tokenForAccepting: _tokenForAccepting,
             amountPaying: _amountPaying,
-            timestamp: block.timestamp
+            timestamp: timeNow
         });
         
         acceptanceCounter++;
         
+        emit AuctionAccepted(
+            acceptanceId,
+            _auctionId,
+            _createdAuctionChainId,
+            msg.sender,
+            _tokenForAccepting
+            _amountPaying,
+            timeNow
+        );
+
     }
 
     /// @notice Closes an auction once a valid offer has been made and AVS attestors have validated the transaction
