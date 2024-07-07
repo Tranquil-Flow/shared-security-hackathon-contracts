@@ -3,12 +3,9 @@ pragma solidity 0.8.25;
 
 interface IERC20 {
     function transferFrom(address from, address to, uint256 amount) external;
-    function transfer(address to, uint256 amount) external;
     function balanceOf(address account) external view returns (uint256);
 }
 
-// TODO: Implement Basic auctioning flow
-// TODO: Implement LayerZero for cross chain messaging
 // TODO: Implement Fees for Auctions
 // TODO: Implement Rewards for Attestors
 
@@ -16,21 +13,36 @@ interface IERC20 {
 /// @author Tranquil-Flow
 /// @notice A contract for P2P transferring of tokens across multiple chains using Dutch Auctions
 contract AuctionReward {
-    struct Auction {
-        bool auctionOpen;
-        address seller;
-        IERC20 tokenForSale;
-        IERC20 tokenForPayment;
-        uint amountForSale;
-        uint startingPrice;
-        uint endPrice;
-        uint startAt;
-        uint expiresAt;
-        uint acceptingChainID;
+    struct CreatedAuction {
+        bool auctionOpen;            // True = Auction is open, False = Auction is closed
+        address seller;              // Address of the auction creator
+        address buyer;               // Address of the auction buyer
+        address tokenForSale;         // Token being sold
+        address tokenForPayment;      // Token accepted as payment
+        uint amountForSale;          // Amount of tokenForSale being sold
+        uint startingPrice;          // Amount of tokenForPayment for the amountForSale of tokenForSale at the start of the auction
+        uint endPrice;               // Amount of tokenForPayment for the amountForSale of tokenForSale at the end of the auction
+        uint startAt;                // Timestamp of when the auction started
+        uint expiresAt;              // Timestamp of when the auction ends
+        uint auctionChainID;         // Chain ID of where the auction is created
+        uint acceptingOfferChainID;  // Chain ID of where the auction is accepted
+    }
+    
+    uint public createdAuctionCounter;
+    mapping(uint => CreatedAuction) public createdAuctions;
+
+    struct AcceptedAuction {
+        uint auctionId;              // Auction ID of the accepted auction
+        uint createdAuctionChainId;  // Chain ID of where the created auction is
+        address seller;              // Address of the auction seller
+        address buyer;               // Address of the auction buyer
+        address tokenForAccepting;   // Token being used as payment to accept auction
+        uint amountPaying;           // Amount of tokenForAccepting being paid
+        uint acceptOffertimestamp;   // Timestamp of when the auction was accepted
     }
 
-    uint public auctionCounter;
-    mapping(uint => Auction) public auctions;
+    uint public acceptanceCounter;
+    mapping(uint => AuctionAcceptance) public auctionAcceptances;
 
     error InvalidPriceRange();
     error InsufficientTokensForSale();
@@ -46,7 +58,8 @@ contract AuctionReward {
         uint _endPrice,
         uint _duration,
         uint _amountForSale,
-        uint _acceptingChainID
+        uint _auctionChainID,
+        uint _acceptingOfferChainID
     ) external {
         if (_startingPrice <= _endPrice) {
             revert InvalidPriceRange();
@@ -56,9 +69,12 @@ contract AuctionReward {
             revert InsufficientTokensForSale();
         }
 
-        auctions[auctionCounter] = Auction({
+        IERC20(_tokenForSale).transferFrom(msg.sender, address(this), _amountForSale);
+
+        createdAuctions[createdAuctionCounter] = Auction({
             auctionOpen: true,
             seller: msg.sender,
+            buyer: address(0),
             tokenForSale: IERC20(_tokenForSale),
             tokenForPayment: IERC20(_tokenForPayment),
             amountForSale: _amountForSale,
@@ -66,16 +82,31 @@ contract AuctionReward {
             endPrice: _endPrice,
             startAt: block.timestamp,
             expiresAt: block.timestamp + _duration,
-            acceptingChainID: _acceptingChainID
+            auctionChainID: _auctionChainID,
+            acceptingOfferChainID: _acceptingOfferChainID
         });
 
-        IERC20(_tokenForSale).transferFrom(msg.sender, address(this), _amountForSale);
-
-        auctionCounter++;
+        createdAuctionCounter++;
     }
 
     /// @notice Accepts an auction
-    function acceptAuction(uint _auctionId, uint _amount) external {
+    function acceptAuction(uint _auctionId, uint _createdAuctionChainId, address _tokenForAccepting, uint _amountPaying) external {
+        
+        IERC20(_tokenForAccepting).transferFrom(msg.sender, address(this), _amount);
+        
+        uint acceptanceId = acceptanceCounter;
+        acceptedAuctions[acceptanceId] = AcceptedAuction({
+            auctionId: _auctionId,
+            createdAuctionChainId: _createdAuctionChainId,
+            seller: address(0),
+            buyer: msg.sender,
+            tokenForAccepting: _tokenForAccepting,
+            amountPaying: _amountPaying,
+            timestamp: block.timestamp
+        });
+        
+        acceptanceCounter++;
+        
     }
 
     /// @notice Closes an auction once a valid offer has been made and AVS attestors have validated the transaction
@@ -90,11 +121,15 @@ contract AuctionReward {
     function withdrawExpiredAuction() external {
     }
 
-    /// @notice Gets the current price of the auction
+    /// @notice Withdraws tokens from a failed offer acceptance
+    function withdrawFailedOffer() external {
+    }
+
+    /// @notice Gets the current price of a created auction
     /// @param _auctionId The ID of the auction
     /// @return The current price of the auction in token amount of tokenForPayment
     function getPrice(uint _auctionId) public view returns (uint) {
-        Auction storage auction = auctions[_auctionId];
+        CreatedAuction storage auction = createdAuctions[_auctionId];
         uint timeElapsed = block.timestamp - auction.startAt;
         uint priceDifference = auction.startingPrice - auction.endPrice;
         uint duration = auction.expiresAt - auction.startAt;
@@ -104,11 +139,11 @@ contract AuctionReward {
         return currentPrice < auction.endPrice ? auction.endPrice : currentPrice;
     }
 
-    /// @notice Gets the auction information
+    /// @notice Gets an auctions information
     /// @param _auctionId The ID of the auction
     /// @return The auction information
-    function getAuctionInfo(uint _auctionId) public view returns (Auction memory) {
-        return auctions[_auctionId];
+    function getAuctionInfo(uint _auctionId) public view returns (CreatedAuction memory) {
+        return createdAuctions[_auctionId];
     }
 
 }
