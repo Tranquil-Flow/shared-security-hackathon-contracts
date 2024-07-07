@@ -46,25 +46,27 @@ contract AuctionReward {
     uint public acceptanceCounter;
     mapping(uint => AcceptedAuction) public acceptedAuctions;
 
+    mapping(uint => mapping(uint => bool)) public offerMade;
+
     event AuctionCreated(
-        uint auctionId,
+        uint indexed auctionId,
         address seller,
-        address indexed tokenForSale,
-        address indexed tokenForPayment,
+        address tokenForSale,
+        address tokenForPayment,
         uint amountForSale,
         uint startingPrice,
         uint endPrice,
         uint startAt,
         uint expiresAt,
         uint indexed auctionChainId,
-        uint acceptingOfferChainId
+        uint indexed acceptingOfferChainId
     );
 
     event AuctionAccepted(
-        uint acceptanceId,
+        uint indexed acceptanceId,
         uint indexed auctionId,
         uint indexed createdAuctionChainId,
-        address indexed buyer,
+        address buyer,
         address tokenForAccepting,
         uint amountPaying,
         uint acceptOfferTimestamp
@@ -73,6 +75,9 @@ contract AuctionReward {
     error InvalidPriceRange();
     error InsufficientTokensForSale();
     error InvalidAuctionID();
+    error OfferAlreadyMade(uint auctionId, uint chainId);
+    error NoOfferMade(uint auctionId, uint chainId);
+    error OfferAlreadyFinalized(uint acceptanceId);
 
     constructor() {
     }
@@ -134,6 +139,9 @@ contract AuctionReward {
 
     /// @notice Accepts an auction that has been created on another chain
     function acceptAuction(uint _auctionId, uint _createdAuctionChainId, address _tokenForAccepting, uint _amountPaying) external {
+        if (offerMade[_auctionId][_createdAuctionChainId]) {
+            revert OfferAlreadyMade(_auctionId, _createdAuctionChainId);
+        }
         IERC20(_tokenForAccepting).transferFrom(msg.sender, address(this), _amountPaying);
         uint timeNow = block.timestamp;
         uint acceptedOfferID = acceptanceCounter;
@@ -150,6 +158,7 @@ contract AuctionReward {
         });
         
         acceptanceCounter++;
+        offerMade[_auctionId][_createdAuctionChainId] = true;
         
         emit AuctionAccepted(
             acceptedOfferID,
@@ -163,8 +172,23 @@ contract AuctionReward {
 
     }
 
+    /// @notice Resumes an auction if the proposed offer was determined to not be valid by AVS attestors
+    /// @param _auctionId The ID of the auction
+    /// @param _createdAuctionChainId The chain ID of the created auction
+    function resumeAuction(uint _auctionId, uint _createdAuctionChainId) external {
+        if (!offerMade[_auctionId][_createdAuctionChainId]) {
+            revert NoOfferMade(_auctionId, _createdAuctionChainId);
+        }
+
+        offerMade[_auctionId][_createdAuctionChainId] = false;
+    }
+
     /// @notice Closes an auction once a valid offer has been made and AVS attestors have validated the transaction
     function closeAuction() external {
+    }
+
+    /// @notice Finalizes an auction offer once the AVS attestors have validated the auction
+    function finalizeOffer() external {
     }
 
     /// @notice Claims rewards for AVS attestors
