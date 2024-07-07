@@ -86,7 +86,7 @@ contract AuctionReward {
         uint _auctionChainID,
         uint _acceptingOfferChainID
     ) external {
-        if (_startingPrice <= _endPrice) {
+        if (_startingPrice = _endPrice) {
             revert InvalidPriceRange();
         }
 
