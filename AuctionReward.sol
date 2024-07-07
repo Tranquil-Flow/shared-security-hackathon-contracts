@@ -27,6 +27,7 @@ interface IERC20 {
 /// @notice A contract for P2P transferring of tokens across multiple chains using Dutch Auctions
 /// @dev Verification of auctions is done by AVS attestors
 contract AuctionReward is ReentrancyGuard {
+    /// @notice Struct for created auctions
     struct CreatedAuction {
         bool auctionOpen;            // True = Auction is open, False = Auction is closed
         address seller;              // Address of the auction creator
@@ -34,8 +35,8 @@ contract AuctionReward is ReentrancyGuard {
         address tokenForSale;        // Token being sold
         address tokenForPayment;     // Token accepted as payment
         uint amountForSale;          // Amount of tokenForSale being sold
-        uint startingPrice;          // Amount of tokenForPayment for the amountForSale of tokenForSale at the start of the auction
-        uint endPrice;               // Amount of tokenForPayment for the amountForSale of tokenForSale at the end of the auction
+        uint startingPrice;          // Starting price of the auction in token amount of tokenForPayment
+        uint endPrice;               // Ending price of the auction in token amount of tokenForPayment
         uint startAt;                // Timestamp of when the auction started
         uint expiresAt;              // Timestamp of when the auction ends
         uint auctionChainID;         // Chain ID of where the auction is created
@@ -45,6 +46,7 @@ contract AuctionReward is ReentrancyGuard {
     uint public createdAuctionCounter;
     mapping(uint => CreatedAuction) public createdAuctions;
 
+    /// @notice Struct for auction acceptance offers
     struct AcceptedAuction {
         bool auctionAccepted;        // True = Auction offer is finalized, False = Auction offer is not finalized
         uint auctionId;              // Auction ID of the accepted auction
@@ -55,10 +57,11 @@ contract AuctionReward is ReentrancyGuard {
         uint amountPaying;           // Amount of tokenForAccepting being paid
         uint acceptOfferTimestamp;   // Timestamp of when the auction was accepted
     }
-
+    
     uint public acceptanceCounter;
     mapping(uint => AcceptedAuction) public acceptedAuctions;
 
+    /// @notice Mapping to check if an offer has been made for an auction (only 1 offer allowed per auction)
     mapping(uint => mapping(uint => bool)) public offerMade;
 
     event AuctionCreated(
