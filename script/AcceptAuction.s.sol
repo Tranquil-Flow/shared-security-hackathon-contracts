@@ -21,13 +21,14 @@ contract AcceptAuction is Script {
         AuctionReward auctionReward = AuctionReward(0xafaFB84a52898Efe2CC7412FCb8d999681C61bbc);
         uint256 auctionId = 0; // Replace with the actual auction ID
         uint256 createdAuctionChainId = 17000; // Holesky testnet
-        address tokenForAccepting = 0x1FB7d6C5eb45468fB914737A20506F1aFB80bBd9; // USDC token
+        address tokenForAccepting = 0x1FB7d6C5eb45468fB914737A20506F1aFB80bBd9;
 
         // Fetch token details
         TestToken tokenForAcceptingContract = TestToken(tokenForAccepting);
         string memory tokenTicker = tokenForAcceptingContract.symbol();
         uint8 tokenDecimals = tokenForAcceptingContract.decimals();
 
+        // First number is the whole number, second number is the fractional part
         uint256 amountPaying = convertToSmallestUnit(2900, 0, tokenDecimals);
 
         // Mint tokens for the acceptor

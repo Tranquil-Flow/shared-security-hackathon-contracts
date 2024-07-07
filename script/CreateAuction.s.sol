@@ -46,8 +46,8 @@ contract CreateAuction is Script {
         // Approve the AuctionReward contract to spend the tokens
         tokenForSaleContract.approve(address(auctionReward), amountForSale);
 
-        // Create the auction
-        auctionReward.createAuction(
+        // Create the auction and capture the auction ID
+        uint256 auctionId = auctionReward.createAuction(
             tokenForSale,
             tokenForPayment,
             startingPrice,
@@ -60,7 +60,8 @@ contract CreateAuction is Script {
 
         vm.stopBroadcast();
 
-        console2.log("Created auction with tokenForSale: %s (%s)", tokenForSale, tokenSellTicker);
+        console2.log("Created auction with ID: %s", auctionId);
+        console2.log("TokenForSale: %s (%s)", tokenForSale, tokenSellTicker);
         console2.log("TokenForPayment: %s (%s)", tokenForPayment, tokenBuyTicker);
         console2.log("AmountForSale: %s %s", amountForSale / 10**tokenSellDecimals, tokenSellTicker);
         console2.log("StartingPrice: %d.%d %s", startingPrice / 10**tokenBuyDecimals, (startingPrice % 10**tokenBuyDecimals) / 10**(tokenBuyDecimals - 1), tokenBuyTicker);
