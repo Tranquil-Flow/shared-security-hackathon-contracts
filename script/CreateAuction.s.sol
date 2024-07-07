@@ -67,6 +67,16 @@ contract CreateAuction is Script {
 
         vm.stopBroadcast();
 
+        // Raw Logs, for debugging:
+            // console2.log("Token for Sale: %s", tokenForSale);
+            // console2.log("Token for Payment: %s", tokenForPayment);
+            // console2.log("Starting Price: %s", startingPrice);
+            // console2.log("End Price: %s", endPrice);
+            // console2.log("Duration: %s", duration);
+            // console2.log("Amount for Sale: %s", amountForSale);
+            // console2.log("Auction Chain ID: %s", auctionChainID);
+            // console2.log("Accepting Offer Chain ID: %s", acceptingOfferChainID);
+
         console2.log("Created auction with ID: %s", auctionId);
         console2.log("TokenForSale: %s (%s)", tokenForSale, tokenSellTicker);
         console2.log("TokenForPayment: %s (%s)", tokenForPayment, tokenBuyTicker);
