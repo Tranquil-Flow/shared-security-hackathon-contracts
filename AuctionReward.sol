@@ -33,7 +33,7 @@ contract AuctionReward {
     mapping(uint => CreatedAuction) public createdAuctions;
 
     struct AcceptedAuction {
-        bool auctionAccepted;        // True = Auction offer is accepted, False = Auction is not accepted
+        bool auctionAccepted;        // True = Auction offer is finalized, False = Auction offer is not finalized
         uint auctionId;              // Auction ID of the accepted auction
         uint createdAuctionChainId;  // Chain ID of where the created auction is
         address seller;              // Address of the auction seller
@@ -96,10 +96,11 @@ contract AuctionReward {
             revert InsufficientTokensForSale();
         }
 
-        uint timeNow = block.timestamp;
         IERC20(_tokenForSale).transferFrom(msg.sender, address(this), _amountForSale);
+        uint timeNow = block.timestamp;
+        uint createdAuctionID = createdAuctionCounter;
 
-        createdAuctions[createdAuctionCounter] = CreatedAuction({
+        createdAuctions[createdAuctionID] = CreatedAuction({
             auctionOpen: true,
             seller: msg.sender,
             buyer: address(0),
@@ -114,8 +115,10 @@ contract AuctionReward {
             acceptingOfferChainID: _acceptingOfferChainID
         });
 
+        createdAuctionCounter++;
+
         emit AuctionCreated(
-            createdAuctionCounter,
+            createdAuctionID,
             msg.sender,
             _tokenForSale,
             _tokenForPayment,
@@ -127,17 +130,15 @@ contract AuctionReward {
             _auctionChainID,
             _acceptingOfferChainID
         );
-
-        createdAuctionCounter++;
     }
 
     /// @notice Accepts an auction that has been created on another chain
     function acceptAuction(uint _auctionId, uint _createdAuctionChainId, address _tokenForAccepting, uint _amountPaying) external {
-        uint timeNow = block.timestamp;
         IERC20(_tokenForAccepting).transferFrom(msg.sender, address(this), _amountPaying);
-        
-        uint acceptanceId = acceptanceCounter;
-        acceptedAuctions[acceptanceId] = AcceptedAuction({
+        uint timeNow = block.timestamp;
+        uint acceptedOfferID = acceptanceCounter;
+
+        acceptedAuctions[acceptedOfferID] = AcceptedAuction({
             auctionAccepted: false,
             auctionId: _auctionId,
             createdAuctionChainId: _createdAuctionChainId,
@@ -151,7 +152,7 @@ contract AuctionReward {
         acceptanceCounter++;
         
         emit AuctionAccepted(
-            acceptanceId,
+            acceptedOfferID,
             _auctionId,
             _createdAuctionChainId,
             msg.sender,
