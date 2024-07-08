@@ -21,6 +21,13 @@ contract Deploy is Script {
         
         console.log("AuctionReward deployed on Chain ID %s at: %s", chainId, address(auctionReward));
 
+        address avsLogicAddress = 0xD3fEEf9d124429654A837ec8a75f2ff55d71fE52;
+
+        auctionReward.setPeer(
+            40217,  // eid of Holesky
+            bytes32(uint256(uint160(0xD3fEEf9d124429654A837ec8a75f2ff55d71fE52)))); // Address of deployed AvsLogic on Holesky 
+        console.log("Peer connection set for AuctionReward. Connected to", avsLogicAddress, "on", chainId);
+
         vm.stopBroadcast();
     }
 }

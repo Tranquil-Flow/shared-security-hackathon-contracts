@@ -27,6 +27,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 // TODO: Implement Fees for Auctions
 // TODO: Implement Rewards for Attestors
 // TODO: Implement proper calling of ResumeAuction from LayerZero message
+// TODO: Remove additional approval if not needed
 
 /// @title AuctionReward
 /// @author Tranquil-Flow

@@ -25,11 +25,11 @@ contract AvsLogic is OAppSender {
 
     /// @notice Called after AVS attestors confirm auction is valid
     function afterTaskSubmission(IAttestationCenter.TaskInfo calldata _taskInfo, bool _isApproved, bytes calldata _tpSignature, uint256[2] calldata _taSignature, uint256[] calldata _operatorIds) external {
-        // address sellerAddress = address(0xd35Fd30DfD459F786Da68e6A09129FDC13850dc1);
-        // address buyerAddress = address(0xd35Fd30DfD459F786Da68e6A09129FDC13850dc1);
+        address sellerAddress = address(0xd35Fd30DfD459F786Da68e6A09129FDC13850dc1);
+        address buyerAddress = address(0xd35Fd30DfD459F786Da68e6A09129FDC13850dc1);
 
-        // uint auctionID = 0;
-        // uint acceptanceID = 0;
+        uint auctionID = 0;
+        uint acceptanceID = 0;
 
         // Calculate the amount of gas to have on contract
         // MessagingFee memory holeskyGas = quote(
@@ -54,14 +54,14 @@ contract AvsLogic is OAppSender {
         */
 
         // Get sellerAddress, buyerAddress, auctionID, acceptanceID from _taskInfo
-        (uint auctionID,
-        uint acceptanceID,
-        ,
-        ,
-        ,
-        address sellerAddress,
-        address buyerAddress
-        ) = abi.decode(_taskInfo.data, (uint, uint, bool, uint, uint, address, address));
+        // (uint auctionID,
+        // uint acceptanceID,
+        // ,
+        // ,
+        // ,
+        // address sellerAddress,
+        // address buyerAddress
+        // ) = abi.decode(_taskInfo.data, (uint, uint, bool, uint, uint, address, address));
 
         // Send message to Holesky to call closeAuction
         send(
@@ -75,15 +75,15 @@ contract AvsLogic is OAppSender {
         );
 
         // Send message to Amoy to call finalizeOffer
-        // send(
-        //     40267,
-        //     2,
-        //     OptionsBuilder.
-        //     newOptions()
-        //     .addExecutorLzReceiveOption({ _gas: uint128(3000000), _value: uint128(0)}),
-        //     sellerAddress,
-        //     acceptanceID
-        // );
+        send(
+            40267,
+            2,
+            OptionsBuilder.
+            newOptions()
+            .addExecutorLzReceiveOption({ _gas: uint128(3000000), _value: uint128(0)}),
+            sellerAddress,
+            acceptanceID
+        );
     }
 
 
@@ -118,22 +118,33 @@ contract AvsLogic is OAppSender {
         uint _auctionOrAcceptanceID
     ) public payable {
         // Encodes the message before invoking _lzSend.
-        bytes memory _payload = abi.encode(_functionType, _sellerOrBuyer, _auctionOrAcceptanceID);
-        _lzSend(
-            _dstEid,
-            _payload,
-            _options,
-            // Fee in native gas and ZRO token.
-            MessagingFee(msg.value, 0),
-            // Refund address in case of failed source message.
-            payable(msg.sender) 
-        );
+        // bytes memory _payload = abi.encode(_functionType, _sellerOrBuyer, _auctionOrAcceptanceID);
+        // MessagingFee memory _fee = _quote(_payload);
+        // _lzSend(
+        //     _dstEid,
+        //     _payload,
+        //     _options,
+        //     // Fee in native gas and ZRO token.
+        //     //MessagingFee(msg.value, 0),
+        //     _fee,
+        //     // Refund address in case of failed source message.
+        //     payable(msg.sender) 
+        // );
 
         emit MessageSent(_functionType, _dstEid, _sellerOrBuyer, _auctionOrAcceptanceID);
     }
 
-    /// @notice Helper function to convert an address to bytes32
-    function addressToBytes32(address _addr) public pure returns (bytes32) {
-        return bytes32(uint256(uint160(_addr)));
+    function testFunction(uint auctionID) public {
+        address buyerAddress = address(0xd35Fd30DfD459F786Da68e6A09129FDC13850dc1);
+
+            send(
+            40217,
+            1,
+            OptionsBuilder.
+            newOptions()
+            .addExecutorLzReceiveOption({ _gas: uint128(3000000), _value: uint128(0)}),
+            buyerAddress,
+            auctionID
+        );
     }
 }

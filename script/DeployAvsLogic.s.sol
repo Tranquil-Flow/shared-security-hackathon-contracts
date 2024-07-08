@@ -18,7 +18,7 @@ contract DeployAvsLogic is Script {
         // Set the peer connections
         avsLogic.setPeer(
             40217, // Holesky testnet
-            bytes32(uint256(uint160(0x1AeF71E391c67afda859adc3028F00D7612c55A8))) // bytes32 of AuctionReward address on Holesky
+            bytes32(uint256(uint160(0x7e6bec26f4E3923Af7D5Af09eb7E8FeE78A0F221))) // bytes32 of AuctionReward address on Holesky
         );
 
         avsLogic.setPeer(
