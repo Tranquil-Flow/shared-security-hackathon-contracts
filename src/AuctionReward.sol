@@ -21,6 +21,7 @@ interface IERC20 {
 
 import { OAppReceiver, Origin } from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OAppReceiver.sol";
 import { OAppCore } from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OAppCore.sol";
+
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 // TODO: Implement Fees for Auctions
@@ -32,8 +33,6 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 /// @notice A contract for P2P transferring of tokens across multiple chains using Dutch Auctions
 /// @dev Verification of auctions is done by AVS attestors
 contract AuctionReward is ReentrancyGuard, OAppReceiver {
-
-    string public data = "Nothing received yet";  // Our data, in this case a string.
     
     /// @dev Called when data is received from the protocol. It overrides the equivalent function in the parent contract.
     /// Protocol messages are defined as packets, comprised of the following parameters.
@@ -61,9 +60,10 @@ contract AuctionReward is ReentrancyGuard, OAppReceiver {
             closeAuction(auctionOrAcceptanceID, sellerOrBuyerAddress);
         } else if(data == 2) {
             // Call finalizeOffer
-            finalizeOffer(auctionOrAcceptanceID, sellerOrBuyerAddress)
+            finalizeOffer(auctionOrAcceptanceID, sellerOrBuyerAddress);
         } else if(data == 3) {
             // Call resumeAuction
+            revert();
         }
     }
 
@@ -153,9 +153,8 @@ contract AuctionReward is ReentrancyGuard, OAppReceiver {
     error InsufficientAllowance();
 
     /// @notice Initializes the OApp with the source chain's endpoint address.
-    /// @param _endpoint The endpoint address.
-    /// @param _owner The OApp child contract owner.
-    constructor(address _endpoint, address _owner) OAppCore(_endpoint, _owner) Ownable(msg.sender) {}
+    /// @param _endpoint The LayerZero endpoint address for the chain this contract is being deployed on.
+    constructor(address _endpoint) OAppCore(_endpoint, msg.sender) Ownable(msg.sender) {}
 
     /// @notice Sets up a Dutch auction
     /// @dev Param inputs defined in documentation of CreatedAuction struct

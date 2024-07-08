@@ -2,13 +2,15 @@
 pragma solidity 0.8.25;
 
 import { IAttestationCenter } from "./IAttestationCenter.sol";
-import { OAppSender, MessagingFee } from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OAppSender.sol";
+
 import { OAppCore } from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OAppCore.sol";
+import { OAppSender, MessagingFee } from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OAppSender.sol";
+
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract AvsLogic is OAppSender {
 
-    event MessageSent(string message, uint32 dstEid);
+    event MessageSent(uint _functionType, uint32 dstEid, address sellerOrBuyer, uint auctionOrAcceptanceID);
 
     /// @notice Initializes the OApp with the source chain's endpoint address.
     /// @dev Preloaded with Endpoint Address for Holesky
@@ -40,11 +42,11 @@ contract AvsLogic is OAppSender {
 
         // Send message to Holesky to call closeAuction
         send(
-            40217,                                          // Holesky testnet
-            "closeAuction",                                 // Function to call
-            0x0003010011010000000000000000000000000000c350, // 50000 Wei
-            buyerAddress,                                   // The address of the buyer
-            auctionID                                       // The auctionID
+            40217,
+            1,
+            abi.encode(0x0003010011010000000000000000000000000000c350),
+            buyerAddress,
+            auctionID
         );
 
         // Send message to Amoy to call finalizeOffer
@@ -71,18 +73,18 @@ contract AvsLogic is OAppSender {
     /**
      * @notice Sends a message from the source to destination chain.
      * @param _dstEid Destination chain's endpoint ID.
-     * @param _message The message to send.
+     * @param _functionType 1 = closeAuction, 2 = finalizeOffer, 3 = resumeAuction
      * @param _options Message execution options (e.g., for sending gas to destination).
      */
     function send(
         uint32 _dstEid,
-        string memory _message,
-        bytes calldata _options,
+        uint _functionType,
+        bytes memory _options,
         address _sellerOrBuyer,
-        uint _auctionOrAcceptqanceID
+        uint _auctionOrAcceptanceID
     ) public payable {
         // Encodes the message before invoking _lzSend.
-        bytes memory _payload = abi.encode(_message, _sellerOrBuyer);
+        bytes memory _payload = abi.encode(_functionType, _sellerOrBuyer, _auctionOrAcceptanceID);
         _lzSend(
             _dstEid,
             _payload,
@@ -93,7 +95,7 @@ contract AvsLogic is OAppSender {
             payable(msg.sender) 
         );
 
-        emit MessageSent(_message, _dstEid);
+        emit MessageSent(_functionType, _dstEid, _sellerOrBuyer, _auctionOrAcceptanceID);
     }
 
     /// @notice Helper function to convert an address to bytes32
