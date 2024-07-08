@@ -19,7 +19,7 @@ contract CreateAuction is Script {
         vm.startBroadcast(creatorPrivateKey);
 
         // Contract and token addresses
-        AuctionReward auctionReward = AuctionReward(0xafaFB84a52898Efe2CC7412FCb8d999681C61bbc);
+        AuctionReward auctionReward = AuctionReward(0x1AeF71E391c67afda859adc3028F00D7612c55A8);
         address tokenForSale = 0x4cB2a1552a51557aB049A57f58a152fB832B159f;
         address tokenForPayment = 0x1FB7d6C5eb45468fB914737A20506F1aFB80bBd9;
 
@@ -33,9 +33,9 @@ contract CreateAuction is Script {
 
         // Auction parameters
         // First number is the whole number, second number is the fractional part
-        uint256 startingPrice = convertToSmallestUnit(3058, 0, tokenBuyDecimals);
-        uint256 endPrice = convertToSmallestUnit(3042, 0, tokenBuyDecimals);
-        uint256 duration = 4 days;
+        uint256 startingPrice = convertToSmallestUnit(3000, 0, tokenBuyDecimals);
+        uint256 endPrice = convertToSmallestUnit(2950, 0, tokenBuyDecimals);
+        uint256 duration = 3 days;
         uint256 amountForSale = 1 * 10**tokenSellDecimals;
         uint256 auctionChainID = 17000; // Holesky testnet
         uint256 acceptingOfferChainID = 80002; // Amoy testnet

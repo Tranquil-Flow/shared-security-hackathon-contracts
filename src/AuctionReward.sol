@@ -19,14 +19,55 @@ interface IERC20 {
     function approve(address spender, uint256 amount) external returns (bool);
 }
 
+import { OAppReceiver, Origin } from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OAppReceiver.sol";
+import { OAppCore } from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OAppCore.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+
 // TODO: Implement Fees for Auctions
 // TODO: Implement Rewards for Attestors
+// TODO: Implement proper calling of ResumeAuction from LayerZero message
 
 /// @title AuctionReward
 /// @author Tranquil-Flow
 /// @notice A contract for P2P transferring of tokens across multiple chains using Dutch Auctions
 /// @dev Verification of auctions is done by AVS attestors
-contract AuctionReward is ReentrancyGuard {
+contract AuctionReward is ReentrancyGuard, OAppReceiver {
+
+    string public data = "Nothing received yet";  // Our data, in this case a string.
+    
+    /// @dev Called when data is received from the protocol. It overrides the equivalent function in the parent contract.
+    /// Protocol messages are defined as packets, comprised of the following parameters.
+    /// @param _origin A struct containing information about where the packet came from.
+    /// @param _guid A global unique identifier for tracking the packet.
+    /// @param payload Encoded message.
+    function _lzReceive(
+        Origin calldata _origin,
+        bytes32 _guid,
+        bytes calldata payload,
+        address,  // Executor address as specified by the OApp.
+        bytes calldata  // Any extra data or options to trigger on receipt.
+    ) internal override {
+        // Decode the payload to get the message which contains:
+            // Data = A string
+        (uint data, address sellerOrBuyerAddress, uint auctionOrAcceptanceID) = abi.decode(payload, (uint, address, uint));
+        // Extract the sender's EID from the origin
+        uint32 senderEid = _origin.srcEid;
+        bytes32 sender = _origin.sender;
+        // Emit the event with the function to call and sender's EID
+        emit MessageReceived(data, senderEid, sender);
+
+        if(data == 1) {
+            // Call closeAuction
+            closeAuction(auctionOrAcceptanceID, sellerOrBuyerAddress);
+        } else if(data == 2) {
+            // Call finalizeOffer
+            finalizeOffer(auctionOrAcceptanceID, sellerOrBuyerAddress)
+        } else if(data == 3) {
+            // Call resumeAuction
+        }
+    }
+
+
     /// @notice Struct for created auctions
     struct CreatedAuction {
         bool auctionOpen;            // True = Auction is open, False = Auction is closed
@@ -63,6 +104,12 @@ contract AuctionReward is ReentrancyGuard {
 
     /// @notice Mapping to check if an offer has been made for an auction (only 1 offer allowed per auction)
     mapping(uint => mapping(uint => bool)) public offerMade;
+
+    /// @notice Emitted when a message is received through _lzReceive.
+    /// @param functionCall 1 = closeAuction, 2 = finalizeOffer, 3 = resumeAuction
+    /// @param senderEid What LayerZero Endpoint sent the message.
+    /// @param sender The sending OApp's address.
+    event MessageReceived(uint functionCall, uint32 senderEid, bytes32 sender);
 
     event AuctionCreated(
         uint indexed auctionId,
@@ -105,8 +152,10 @@ contract AuctionReward is ReentrancyGuard {
     error UnauthorizedWithdrawal(uint _auctionId, address _withdrawer);
     error InsufficientAllowance();
 
-    constructor() {
-    }
+    /// @notice Initializes the OApp with the source chain's endpoint address.
+    /// @param _endpoint The endpoint address.
+    /// @param _owner The OApp child contract owner.
+    constructor(address _endpoint, address _owner) OAppCore(_endpoint, _owner) Ownable(msg.sender) {}
 
     /// @notice Sets up a Dutch auction
     /// @dev Param inputs defined in documentation of CreatedAuction struct
@@ -237,7 +286,7 @@ contract AuctionReward is ReentrancyGuard {
     /// @notice Resumes an auction if the proposed offer was determined to not be valid by AVS attestors
     /// @param _auctionId The ID of the auction
     /// @param _createdAuctionChainId The chain ID of the created auction
-    function resumeAuction(uint _auctionId, uint _createdAuctionChainId) external {
+    function resumeAuction(uint _auctionId, uint _createdAuctionChainId) internal {
         // Check if an offer has been made for the auction
         if (!offerMade[_auctionId][_createdAuctionChainId]) {
             revert NoOfferMade(_auctionId, _createdAuctionChainId);
@@ -252,7 +301,7 @@ contract AuctionReward is ReentrancyGuard {
     /// @notice Closes an auction once a valid offer has been made and AVS attestors have validated the transaction
     /// @param _auctionId The ID of the auction
     /// @param _buyer The address of the buyer of the auction
-    function closeAuction(uint _auctionId, address _buyer) external nonReentrant {
+    function closeAuction(uint _auctionId, address _buyer) public nonReentrant {
         CreatedAuction storage createdAuction = createdAuctions[_auctionId];
         
         // Check if the auction has expired
@@ -278,7 +327,7 @@ contract AuctionReward is ReentrancyGuard {
     /// @notice Finalizes an auction offer once the AVS attestors have validated the auction
     /// @param _acceptanceId The ID of the acceptance
     /// @param _seller The address of the seller of the auction
-    function finalizeOffer(uint _acceptanceId, address _seller) external nonReentrant {
+    function finalizeOffer(uint _acceptanceId, address _seller) public nonReentrant {
         AcceptedAuction storage acceptedAuction = acceptedAuctions[_acceptanceId];
         
         // Check if the offer has already been finalized

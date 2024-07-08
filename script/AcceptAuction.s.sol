@@ -18,8 +18,8 @@ contract AcceptAuction is Script {
         address acceptor = vm.addr(acceptorPrivateKey);
         vm.startBroadcast(acceptorPrivateKey);
 
-        AuctionReward auctionReward = AuctionReward(0xafaFB84a52898Efe2CC7412FCb8d999681C61bbc);
-        uint256 auctionId = 5; // Replace with the actual auction ID
+        AuctionReward auctionReward = AuctionReward(0x21bef676c07648CE9FBCAF49C4a5fbE2882918fB);
+        uint256 auctionId = 2; // Replace with the actual auction ID
         uint256 createdAuctionChainId = 17000; // Holesky testnet
         address tokenForAccepting = 0x1FB7d6C5eb45468fB914737A20506F1aFB80bBd9;
 
@@ -37,12 +37,16 @@ contract AcceptAuction is Script {
         // Approve the AuctionReward contract to spend the tokens
         tokenForAcceptingContract.approve(address(auctionReward), amountPaying);
 
+        // Get the current auction counter to determine the acceptance ID
+        uint256 acceptanceId = auctionReward.acceptanceCounter();
+
         // Accept the auction
         auctionReward.acceptAuction(auctionId, createdAuctionChainId, tokenForAccepting, amountPaying);
 
         vm.stopBroadcast();
 
         console2.log("Accepted auction ID: %s", auctionId);
+        console2.log("Acceptance ID: %s", acceptanceId);
         console2.log("TokenForAccepting: %s (%s)", tokenForAccepting, tokenTicker);
         console2.log("Amount paid: %d.%d %s", amountPaying / 10**tokenDecimals, (amountPaying % 10**tokenDecimals) / 10**(tokenDecimals - 1), tokenTicker);
         console2.log("Acceptor address: %s", acceptor);
