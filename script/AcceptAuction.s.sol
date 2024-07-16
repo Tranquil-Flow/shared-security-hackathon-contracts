@@ -18,8 +18,10 @@ contract AcceptAuction is Script {
         address acceptor = vm.addr(acceptorPrivateKey);
         vm.startBroadcast(acceptorPrivateKey);
 
+            // Old Testing: 0x21bef676c07648CE9FBCAF49C4a5fbE2882918fB
+            // Transfer Demo: 0xD3fEEf9d124429654A837ec8a75f2ff55d71fE52
         AuctionReward auctionReward = AuctionReward(0x21bef676c07648CE9FBCAF49C4a5fbE2882918fB);
-        uint256 auctionId = 21; // Replace with the actual auction ID
+        uint256 auctionId = 15; // Replace with the actual auction ID
         uint256 createdAuctionChainId = 17000; // Holesky testnet
         address tokenForAccepting = 0x1FB7d6C5eb45468fB914737A20506F1aFB80bBd9;
 

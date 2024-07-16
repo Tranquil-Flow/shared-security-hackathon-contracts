@@ -14,6 +14,7 @@ abstract contract ReentrancyGuard {
 
 interface IERC20 {
     function transferFrom(address from, address to, uint256 amount) external;
+    function transfer(address to, uint256 amount) external returns (bool);
     function balanceOf(address account) external view returns (uint256);
     function allowance(address owner, address spender) external view returns (uint256);
     function approve(address spender, uint256 amount) external returns (bool);
@@ -319,7 +320,8 @@ contract AuctionReward is ReentrancyGuard, OAppReceiver {
         createdAuction.buyer = _buyer;
 
         // Transfer the tokenForSale to the buyer
-        IERC20(createdAuction.tokenForSale).transferFrom(address(this), _buyer, createdAuction.amountForSale);
+        bool success = IERC20(createdAuction.tokenForSale).transfer(_buyer, createdAuction.amountForSale);
+        require(success, "Token transfer failed");
 
         emit AuctionClosed(_auctionId, _buyer, createdAuction.tokenForSale, createdAuction.amountForSale);
     }
@@ -340,7 +342,8 @@ contract AuctionReward is ReentrancyGuard, OAppReceiver {
         acceptedAuction.seller = _seller;
 
         // Transfer the tokenForAccepting to the seller
-        IERC20(acceptedAuction.tokenForAccepting).transferFrom(address(this), _seller, acceptedAuction.amountPaying);
+        bool success = IERC20(acceptedAuction.tokenForAccepting).transfer(_seller, acceptedAuction.amountPaying);
+        require(success, "Token transfer failed");
 
         emit OfferFinalized(_acceptanceId, _seller, acceptedAuction.tokenForAccepting, acceptedAuction.amountPaying);
     }

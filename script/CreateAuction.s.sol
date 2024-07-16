@@ -20,8 +20,8 @@ contract CreateAuction is Script {
 
         // Contract and token addresses
             // Old Testing: 0x1AeF71E391c67afda859adc3028F00D7612c55A8
-            // LZ Testing: 0x7e6bec26f4E3923Af7D5Af09eb7E8FeE78A0F221
-        AuctionReward auctionReward = AuctionReward(0x1AeF71E391c67afda859adc3028F00D7612c55A8);
+            // Transfer Demo: 0xE679fD923B131F15FfE31AAE653504afeB2982A1
+        AuctionReward auctionReward = AuctionReward(0xE679fD923B131F15FfE31AAE653504afeB2982A1);
         address tokenForSale = 0x4cB2a1552a51557aB049A57f58a152fB832B159f;
         address tokenForPayment = 0x1FB7d6C5eb45468fB914737A20506F1aFB80bBd9;
 
